@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#06191F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="주유계산">
+<title>주유 계산기</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --deep:#06191F;
+    --plate:#041216;
+    --panel:#0E2C34;
+    --line:#1C4650;
+    --amber:#FFBE3D;
+    --amber-dim:#7A5A1C;
+    --mint:#5FD9C0;
+    --muted:#7FA6AE;
+    --paper:#EAF4F5;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--deep);}
+  body{
+    font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+    color:var(--paper);
+    min-height:100vh;
+    padding:20px 16px calc(40px + env(safe-area-inset-bottom));
+    display:flex;justify-content:center;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{width:100%;max-width:440px}
+
+  /* ---------- header ---------- */
+  .top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px}
+  .top h1{font-size:17px;font-weight:700;letter-spacing:-.02em}
+  .top .sub{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase}
+
+  /* ---------- LCD ---------- */
+  .lcd{
+    background:var(--plate);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:18px 18px 14px;
+    box-shadow:inset 0 2px 22px rgba(0,0,0,.9), 0 1px 0 rgba(255,255,255,.04);
+    position:relative;overflow:hidden;
+  }
+  .lcd::after{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(to bottom,rgba(255,255,255,.025) 0 1px,transparent 1px 3px);
+  }
+  .row{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+  .row + .row{margin-top:10px;padding-top:10px;border-top:1px dashed rgba(122,90,28,.35)}
+  .key{font-size:12px;color:var(--muted);letter-spacing:-.01em;white-space:nowrap}
+  .val{
+    font-family:'JetBrains Mono',monospace;font-weight:500;
+    display:flex;align-items:baseline;gap:5px;position:relative;
+  }
+  .digits{position:relative;display:inline-block;text-align:right}
+  .ghost{position:absolute;right:0;top:0;color:var(--amber-dim);opacity:.28;pointer-events:none}
+  .live{position:relative;color:var(--amber)}
+  .row-main .digits{font-size:44px;line-height:1.05;font-weight:700;letter-spacing:-.01em}
+  .row-main .live{text-shadow:0 0 18px rgba(255,190,61,.35)}
+  .row-main .unit{font-size:16px;color:var(--amber);opacity:.75}
+  .row-sub .digits{font-size:20px;color:var(--mint)}
+  .row-sub .live{color:var(--mint);text-shadow:0 0 12px rgba(95,217,192,.2)}
+  .row-sub .ghost{color:#1F5B52;opacity:.35}
+  .row-sub .unit{font-size:12px;color:var(--mint);opacity:.7}
+  .hint{margin-top:12px;font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;letter-spacing:.02em}
+
+  /* ---------- inputs ---------- */
+  .fields{margin-top:18px;display:flex;flex-direction:column;gap:10px}
+  .field{
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:12px 14px;display:flex;align-items:center;gap:12px;
+    transition:border-color .18s ease;
+  }
+  .field:focus-within{border-color:var(--amber)}
+  .field label{font-size:13px;color:var(--paper);font-weight:600;width:66px;flex:none;letter-spacing:-.02em}
+  .field .desc{font-size:11px;color:var(--muted);display:block;font-weight:400;margin-top:2px}
+  .field input{
+    flex:1;min-width:0;background:transparent;border:0;outline:none;
+    font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:500;
+    color:var(--paper);text-align:right;padding:0;
+  }
+  .field input::placeholder{color:#3E6670}
+  .field .u{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);width:38px;text-align:left;flex:none}
+
+  /* ---------- toggles ---------- */
+  .opts{margin-top:10px;display:flex;gap:10px;align-items:stretch}
+  .trip{
+    flex:none;background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:10px 14px;display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none;
+  }
+  .trip input{position:absolute;opacity:0;width:0;height:0}
+  .dot{width:9px;height:9px;border-radius:50%;background:#2B5560;transition:background .18s,box-shadow .18s}
+  .trip input:checked ~ .dot{background:var(--amber);box-shadow:0 0 10px rgba(255,190,61,.6)}
+  .trip input:focus-visible ~ .dot{outline:2px solid var(--amber);outline-offset:3px}
+  .trip span.t{font-size:13px;font-weight:600;letter-spacing:-.02em}
+
+  .seg{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px;display:flex;gap:4px}
+  .seg button{
+    flex:1;background:transparent;border:0;border-radius:9px;padding:7px 0;cursor:pointer;
+    font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);
+    transition:background .18s,color .18s;
+  }
+  .seg button[aria-pressed="true"]{background:var(--amber);color:#06191F;font-weight:700}
+  .seg button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+  .caption{margin-top:8px;font-size:11px;color:var(--muted);text-align:right;letter-spacing:-.01em}
+
+  /* ---------- footer stats ---------- */
+  .stats{
+    margin-top:16px;padding-top:14px;border-top:1px solid var(--line);
+    display:flex;justify-content:space-between;gap:12px;
+  }
+  .stat .n{font-family:'JetBrains Mono',monospace;font-size:15px;color:var(--paper)}
+  .stat .l{font-size:11px;color:var(--muted);margin-top:3px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="top">
+    <h1>출퇴근 주유 계산기</h1>
+    <div class="sub">FUEL / KRW</div>
+  </div>
+
+  <section class="lcd" aria-live="polite">
+    <div class="row row-main">
+      <div class="key">주유 금액</div>
+      <div class="val"><span class="digits"><span class="ghost" id="gAmt"></span><span class="live" id="amt">0</span></span><span class="unit">원</span></div>
+    </div>
+    <div class="row row-sub">
+      <div class="key">주유량</div>
+      <div class="val"><span class="digits"><span class="ghost" id="gLit"></span><span class="live" id="lit">0.00</span></span><span class="unit">L</span></div>
+    </div>
+    <div class="hint" id="hint">연비 · 거리 · 유가를 입력하세요</div>
+  </section>
+
+  <div class="fields">
+    <div class="field">
+      <label for="eff">연비<span class="desc">그날 계기판 평균</span></label>
+      <input id="eff" type="text" inputmode="decimal" placeholder="11.5" autocomplete="off">
+      <span class="u">km/L</span>
+    </div>
+    <div class="field">
+      <label for="dist">주행거리<span class="desc">편도 기준</span></label>
+      <input id="dist" type="text" inputmode="decimal" placeholder="42" autocomplete="off">
+      <span class="u">km</span>
+    </div>
+    <div class="field">
+      <label for="price">유가<span class="desc">주유소 리터당</span></label>
+      <input id="price" type="text" inputmode="decimal" placeholder="1650" autocomplete="off">
+      <span class="u">원/L</span>
+    </div>
+  </div>
+
+  <div class="opts">
+    <label class="trip">
+      <input type="checkbox" id="round-trip">
+      <span class="dot" aria-hidden="true"></span>
+      <span class="t">왕복</span>
+    </label>
+    <div class="seg" role="group" aria-label="금액 올림 단위">
+      <button type="button" data-unit="1" aria-pressed="false">1원</button>
+      <button type="button" data-unit="100" aria-pressed="true">100원</button>
+      <button type="button" data-unit="1000" aria-pressed="false">1,000원</button>
+    </div>
+  </div>
+  <div class="caption" id="cap">주유소에서 부르기 편하게 올림</div>
+
+  <div class="stats">
+    <div class="stat"><div class="n" id="perKm">–</div><div class="l">km당 비용</div></div>
+    <div class="stat"><div class="n" id="totalDist">–</div><div class="l">실제 주행</div></div>
+    <div class="stat"><div class="n" id="exact">–</div><div class="l">올림 전 금액</div></div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const eff = $('eff'), dist = $('dist'), price = $('price'), trip = $('round-trip');
+  let unit = 100;
+
+  const num = el => {
+    const v = parseFloat(String(el.value).replace(/[^\d.]/g,''));
+    return isFinite(v) && v > 0 ? v : 0;
+  };
+  const won = n => Math.round(n).toLocaleString('ko-KR');
+  const ghostOf = s => s.replace(/\d/g,'8');
+
+  function paint(id, gid, text){
+    $(id).textContent = text;
+    $(gid).textContent = ghostOf(text);
+  }
+
+  function calc(){
+    const e = num(eff), d = num(dist) * (trip.checked ? 2 : 1), p = num(price);
+    const ready = e > 0 && d > 0 && p > 0;
+
+    if(!ready){
+      paint('amt','gAmt','0');
+      paint('lit','gLit','0.00');
+      $('hint').textContent = '연비 · 거리 · 유가를 입력하세요';
+      $('perKm').textContent = '–';
+      $('totalDist').textContent = num(dist) > 0 ? (d).toFixed(0) + ' km' : '–';
+      $('exact').textContent = '–';
+      return;
+    }
+
+    const liters = d / e;
+    const raw = liters * p;
+    const amount = Math.ceil(raw / unit) * unit;
+    const billedLiters = amount / p;
+
+    paint('amt','gAmt', won(amount));
+    paint('lit','gLit', billedLiters.toFixed(2));
+    $('hint').textContent = `${d.toFixed(1)}km ÷ ${e}km/L × ${won(p)}원`;
+    $('perKm').textContent = won(amount / d) + ' 원';
+    $('totalDist').textContent = d.toFixed(0) + ' km';
+    $('exact').textContent = won(raw) + ' 원';
+
+    save({e:eff.value, p:price.value, u:unit, t:trip.checked});
+  }
+
+  // 올림 단위 선택
+  document.querySelectorAll('.seg button').forEach(b => {
+    b.addEventListener('click', () => {
+      unit = +b.dataset.unit;
+      document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', x === b));
+      $('cap').textContent = unit === 1 ? '계산된 금액 그대로' : '주유소에서 부르기 편하게 올림';
+      calc();
+    });
+  });
+
+  [eff, dist, price].forEach(el => el.addEventListener('input', calc));
+  trip.addEventListener('change', calc);
+
+  // 연비 · 유가 · 설정 기억 (실패해도 계산은 정상 동작)
+  function save(state){
+    try { localStorage.setItem('fuel-prefs', JSON.stringify(state)); } catch(err){}
+  }
+  function load(){
+    try {
+      const raw = localStorage.getItem('fuel-prefs');
+      if(raw){
+        const s = JSON.parse(raw);
+        if(s.e) eff.value = s.e;
+        if(s.p) price.value = s.p;
+        if(s.t) trip.checked = true;
+        if(s.u){
+          unit = s.u;
+          document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', +x.dataset.unit === unit));
+        }
+      }
+    } catch(err){}
+    calc();
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>
